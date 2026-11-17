@@ -1,5 +1,5 @@
 # Builds dist\WirelessBattery-Setup-<version>.exe and dist\WirelessBattery-<version>-portable.zip.
-# Needs: WirelessBattery.exe already built (make / build.bat) and Inno Setup 6 or 7 installed.
+# Needs: WirelessBattery.exe already built (make / build.bat) and Inno Setup 6.5.0 or later installed.
 param([string]$Version = "1.0.0")
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent

@@ -3,6 +3,10 @@
 ; Setup also offers "Install for all users" (Program Files, needs administrator rights).
 ; Build with installer\build-installer.ps1 (or: ISCC /DAppVersion=1.2.3 installer\WirelessBattery.iss).
 
+#if Ver < EncodeVer(6, 5, 0)
+  #error This Chinese installer requires Inno Setup 6.5.0 or later.
+#endif
+
 #ifndef AppVersion
   #define AppVersion "1.0.0"
 #endif
@@ -10,10 +14,10 @@
 
 [Setup]
 AppId={{7E0B5C2A-3F4D-4C8E-9B61-2D5A8F1C4E93}
-AppName=Wireless Battery
+AppName=无线设备电量监控
 AppVersion={#AppVersion}
-AppVerName=Wireless Battery {#AppVersion}
-AppPublisher=Wireless Battery contributors
+AppVerName=无线设备电量监控 {#AppVersion}
+AppPublisher=Wireless Battery 贡献者
 DefaultDirName={autopf}\Wireless Battery
 DisableProgramGroupPage=yes
 DisableDirPage=auto
@@ -26,14 +30,18 @@ OutputDir={#Root}\dist
 OutputBaseFilename=WirelessBattery-Setup-{#AppVersion}
 SetupIconFile={#Root}\res\app.ico
 UninstallDisplayIcon={app}\WirelessBattery.exe
-UninstallDisplayName=Wireless Battery
+UninstallDisplayName=无线设备电量监控
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
 CloseApplications=no
+ShowLanguageDialog=no
+
+[Languages]
+Name: "chinesesimp"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
 
 [Tasks]
-Name: "autostart"; Description: "Start Wireless Battery when I sign in to Windows"
+Name: "autostart"; Description: "登录 Windows 时自动启动无线设备电量监控"
 
 [Files]
 Source: "{#Root}\WirelessBattery.exe"; DestDir: "{app}"; Flags: ignoreversion
@@ -42,10 +50,10 @@ Source: "{#Root}\LICENSE"; DestDir: "{app}"; DestName: "LICENSE.txt"; Flags: ign
 Source: "{#Root}\installer\THIRD_PARTY_NOTICES.txt"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{autoprograms}\Wireless Battery"; Filename: "{app}\WirelessBattery.exe"
+Name: "{autoprograms}\无线设备电量监控"; Filename: "{app}\WirelessBattery.exe"
 
 [Run]
-Filename: "{app}\WirelessBattery.exe"; Description: "Start Wireless Battery now"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\WirelessBattery.exe"; Description: "立即启动无线设备电量监控"; Flags: nowait postinstall skipifsilent
 
 [UninstallRun]
 Filename: "{app}\WirelessBattery.exe"; Parameters: "--quit"; Flags: runhidden waituntilterminated; RunOnceId: "QuitApp"
@@ -115,13 +123,13 @@ begin
   if (CurPageID = wpSelectDir) and not WizardSilent() and not CanWriteTo(WizardDirValue()) then
   begin
     if IsAdminInstallMode() then
-      MsgBox('Setup cannot create or write to this folder:' + #13#10 + WizardDirValue() + #13#10#13#10 +
-        'Please choose a different folder.', mbError, MB_OK)
+      MsgBox('安装程序无法创建或写入此文件夹：' + #13#10 + WizardDirValue() + #13#10#13#10 +
+        '请选择其他文件夹。', mbError, MB_OK)
     else
-      MsgBox('Your account cannot create or write to this folder without administrator rights:' + #13#10 +
+      MsgBox('当前账户没有管理员权限，无法创建或写入此文件夹：' + #13#10 +
         WizardDirValue() + #13#10#13#10 +
-        'Choose a folder you own (the default one always works), or close Setup, run it again and ' +
-        'pick "Install for all users".', mbError, MB_OK);
+        '请选择当前账户有写入权限的文件夹（建议使用默认目录），或关闭安装程序，重新运行并' +
+        '选择“为所有用户安装”。', mbError, MB_OK);
     Result := False;
   end;
 end;

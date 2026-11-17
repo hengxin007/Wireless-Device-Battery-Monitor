@@ -2,7 +2,7 @@
 CXX      ?= g++
 WINDRES  ?= windres
 CXXFLAGS ?= -std=c++17 -Os -Wall -Wno-missing-field-initializers -ffunction-sections -fdata-sections \
-            -D_WIN32_WINNT=0x0A00 -DWINVER=0x0A00
+            -D_WIN32_WINNT=0x0A00 -DWINVER=0x0A00 -finput-charset=UTF-8 -fexec-charset=UTF-8
 LDFLAGS  ?= -municode -mwindows -static -s -Wl,--gc-sections
 LIBS     := -lhid -lsetupapi -lcfgmgr32 -lole32 -lcomctl32 -lgdi32 -lruntimeobject
 
@@ -18,7 +18,7 @@ build/%.o: src/%.cpp $(wildcard src/*.h src/drivers/*.h)
 
 build/app_res.o: res/app.rc res/app.manifest res/app.ico
 	@mkdir -p build
-	$(WINDRES) -i $< -o $@ --include-dir res
+	$(WINDRES) -i $< -o $@ --include-dir res --codepage=65001
 
 clean:
 	rm -rf build WirelessBattery.exe

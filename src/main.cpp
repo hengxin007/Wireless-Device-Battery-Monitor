@@ -14,6 +14,7 @@
 
 #include "devices.h"
 #include "widget.h"
+#include "localization.h"
 
 namespace {
 
@@ -28,7 +29,7 @@ constexpr UINT PLACEHOLDER_ID = 1;
 
 enum MenuId : UINT { ID_REFRESH = 100, ID_AUTOSTART, ID_HIDE_LAST_KNOWN, ID_EXIT, ID_MODE_WIDGET, ID_MODE_TRAY, ID_DEVICE_FIRST = 1000 };
 
-const wchar_t* kAppName = L"Wireless Battery";
+const wchar_t* kAppName = zh_cn::kAppName;
 const wchar_t* kRunKey = L"Software\\Microsoft\\Windows\\CurrentVersion\\Run";
 const wchar_t* kRunValue = L"WirelessBattery";
 
@@ -260,14 +261,14 @@ void CopyTip(wchar_t* dst, size_t cap, const std::wstring& s) {
 
 std::wstring StatusText(const TrayEntry& e) {
     const auto& s = e.st;
-    if (!s.connected) return L"off / not connected";
+    if (!s.connected) return L"已关闭 / 未连接";
     std::wstring t;
-    if (!s.levelText.empty() && s.percent >= 0) t = s.levelText;
+    if (!s.levelText.empty() && s.percent >= 0) t = zh_cn::Text(s.levelText);
     else if (s.percent >= 0) t = std::to_wstring(s.percent) + L"%";
-    else if (e.lastPct >= 0) t = std::to_wstring(e.lastPct) + L"% (last known)";
-    else t = L"unknown";
-    if (s.charging) t += L", charging";
-    if (s.asleep) t += L", asleep";
+    else if (e.lastPct >= 0) t = std::to_wstring(e.lastPct) + L"%（上次电量）";
+    else t = L"未知";
+    if (s.charging) t += L"，充电中";
+    if (s.asleep) t += L"，休眠中";
     return t;
 }
 
@@ -309,7 +310,7 @@ void UpdatePlaceholder() {
     for (auto& [k, e] : g_entries) any |= e.added;
     if (!any && !g_placeholder) {
         if (!g_placeholderIcon) g_placeholderIcon = RenderIcon(L"-", -1, Foreground(), Foreground(), true);
-        TrayCall(NIM_ADD, PLACEHOLDER_ID, g_placeholderIcon, L"Wireless Battery\nNo devices with battery info found");
+        TrayCall(NIM_ADD, PLACEHOLDER_ID, g_placeholderIcon, std::wstring(kAppName) + L"\n未找到可读取电量的设备");
         g_placeholder = true;
     } else if (any && g_placeholder) {
         TrayDelete(PLACEHOLDER_ID);
@@ -332,15 +333,15 @@ void ApplyEntry(TrayEntry& e) {
         e.icon = IconFor(shown, s.charging, dim);
         e.iconSig = sig;
     }
-    std::wstring tip = s.name + L"\n" + StatusText(e);
+    std::wstring tip = zh_cn::Text(s.name) + L"\n" + StatusText(e);
 
     const wchar_t* infoTitle = nullptr;
     std::wstring info;
     if (s.charging || shown > LOW_BATTERY + 10) e.lowWarned = false;
     if (!s.charging && s.percent >= 0 && s.percent <= LOW_BATTERY && !e.lowWarned) {
         e.lowWarned = true;
-        infoTitle = L"Low battery";
-        info = s.name + L" is at " + std::to_wstring(s.percent) + L"%";
+        infoTitle = L"电量不足";
+        info = zh_cn::Text(s.name) + L" 的剩余电量为 " + std::to_wstring(s.percent) + L"%";
     }
     TrayCall(e.added ? NIM_MODIFY : NIM_ADD, e.uid, e.icon, tip, infoTitle, info);
     e.added = true;
@@ -371,16 +372,16 @@ void UpdateWidget() {
         WidgetItem it;
         it.kind = e->st.kind;
         it.percent = e->st.percent >= 0 ? e->st.percent : e->lastPct;
-        if (e->st.percent >= 0) it.text = e->st.levelText;
+        if (e->st.percent >= 0) it.text = zh_cn::Text(e->st.levelText);
         it.charging = e->st.charging;
         it.dim = e->st.percent < 0;
         it.low = !it.charging && it.percent >= 0 && it.percent <= LOW_BATTERY;
         it.bluetooth = e->st.via == L"Bluetooth";
         items.push_back(it);
         if (!tip.empty()) tip += L"\n";
-        tip += e->st.name + L": " + StatusText(*e);
+        tip += zh_cn::Text(e->st.name) + L"：" + StatusText(*e);
     }
-    if (tip.empty()) tip = L"Wireless Battery: no devices with battery info found";
+    if (tip.empty()) tip = std::wstring(kAppName) + L"：未找到可读取电量的设备";
     widget::SetItems(items, tip);
 }
 
@@ -467,23 +468,23 @@ void RedrawAll() {
 void ShowMenu() {
     HMENU m = CreatePopupMenu();
     std::vector<std::wstring> keys;  // menu id ID_DEVICE_FIRST + i -> device key
-    if (g_entries.empty()) AppendMenuW(m, MF_STRING | MF_GRAYED, 0, L"No devices with battery info found");
-    else AppendMenuW(m, MF_STRING | MF_GRAYED, 0, L"Click a device to show or hide it");
+    if (g_entries.empty()) AppendMenuW(m, MF_STRING | MF_GRAYED, 0, L"未找到可读取电量的设备");
+    else AppendMenuW(m, MF_STRING | MF_GRAYED, 0, L"点击设备可显示或隐藏（勾选表示显示）");
     for (auto& [k, e] : g_entries) {
-        std::wstring line = e.st.name + L":  " + StatusText(e) + L"   [" + e.st.via + L"]";
+        std::wstring line = zh_cn::Text(e.st.name) + L"：" + StatusText(e) + L"   [" + zh_cn::Text(e.st.via) + L"]";
         AppendMenuW(m, MF_STRING | (IsHidden(k) ? 0 : MF_CHECKED), ID_DEVICE_FIRST + (UINT)keys.size(), line.c_str());
         keys.push_back(k);
     }
-    AppendMenuW(m, MF_STRING | (g_hideLastKnown ? MF_CHECKED : 0), ID_HIDE_LAST_KNOWN, L"Hide last known / asleep devices");
+    AppendMenuW(m, MF_STRING | (g_hideLastKnown ? MF_CHECKED : 0), ID_HIDE_LAST_KNOWN, L"隐藏休眠或仅有上次电量的设备");
     AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
-    AppendMenuW(m, MF_STRING | (g_wantWidget ? MF_CHECKED : 0), ID_MODE_WIDGET, L"Show on the taskbar (icon + percentage)");
-    AppendMenuW(m, MF_STRING | (!g_wantWidget ? MF_CHECKED : 0), ID_MODE_TRAY, L"Show as tray icons");
+    AppendMenuW(m, MF_STRING | (g_wantWidget ? MF_CHECKED : 0), ID_MODE_WIDGET, L"在任务栏显示（图标 + 电量）");
+    AppendMenuW(m, MF_STRING | (!g_wantWidget ? MF_CHECKED : 0), ID_MODE_TRAY, L"显示为托盘图标");
     CheckMenuRadioItem(m, ID_MODE_WIDGET, ID_MODE_TRAY, g_wantWidget ? ID_MODE_WIDGET : ID_MODE_TRAY, MF_BYCOMMAND);
     AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
-    AppendMenuW(m, MF_STRING, ID_REFRESH, L"Refresh now");
-    AppendMenuW(m, MF_STRING | (AutostartEnabled() ? MF_CHECKED : 0), ID_AUTOSTART, L"Start with Windows");
+    AppendMenuW(m, MF_STRING, ID_REFRESH, L"立即刷新");
+    AppendMenuW(m, MF_STRING | (AutostartEnabled() ? MF_CHECKED : 0), ID_AUTOSTART, L"开机自启动");
     AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
-    AppendMenuW(m, MF_STRING, ID_EXIT, L"Exit");
+    AppendMenuW(m, MF_STRING, ID_EXIT, L"退出");
     POINT pt;
     GetCursorPos(&pt);
     SetForegroundWindow(g_hwnd);
@@ -590,6 +591,12 @@ int ListToConsole(bool dump) {
         if (AttachConsole(ATTACH_PARENT_PROCESS)) out = CreateFileW(L"CONOUT$", GENERIC_WRITE, FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, 0, nullptr);
     }
     auto write = [&](const std::wstring& s) {
+        DWORD mode;
+        if (GetConsoleMode(out, &mode)) {
+            DWORD written;
+            WriteConsoleW(out, s.c_str(), (DWORD)s.size(), &written, nullptr);
+            return;
+        }
         int n = WideCharToMultiByte(CP_UTF8, 0, s.c_str(), (int)s.size(), nullptr, 0, nullptr, nullptr);
         std::string u(n, 0);
         WideCharToMultiByte(CP_UTF8, 0, s.c_str(), (int)s.size(), u.data(), n, nullptr, nullptr);
@@ -601,15 +608,15 @@ int ListToConsole(bool dump) {
         return 0;
     }
     auto list = PollAllDevices();
-    if (list.empty()) write(L"No devices with battery info found.\n");
+    if (list.empty()) write(L"未找到可读取电量的设备。\n");
     for (auto& s : list) {
-        std::wstring line = s.name + L"  [" + s.via + L"]  ";
-        if (!s.connected) line += L"off / not connected";
-        else if (s.asleep) line += L"asleep";
-        else if (!s.levelText.empty()) line += s.levelText;
+        std::wstring line = zh_cn::Text(s.name) + L"  [" + zh_cn::Text(s.via) + L"]  ";
+        if (!s.connected) line += L"已关闭 / 未连接";
+        else if (s.asleep) line += L"休眠中";
+        else if (!s.levelText.empty()) line += zh_cn::Text(s.levelText);
         else if (s.percent >= 0) line += std::to_wstring(s.percent) + L"%";
-        else line += L"unknown";
-        if (s.charging) line += L", charging";
+        else line += L"未知";
+        if (s.charging) line += L"，充电中";
         if (s.millivolts) line += L", " + std::to_wstring(s.millivolts) + L" mV";
         write(line + L"   (" + s.key + L")\n");
     }
